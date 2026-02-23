@@ -58,14 +58,15 @@ class TensorHybrid : public facebook::jni::HybridClass<TensorHybrid> {
     // Java wrapper currently only supports contiguous tensors.
 
     const auto scalarType = tensor.scalar_type();
-    int jdtype = scalar_type_to_java_dtype.at(scalarType);
     if (scalar_type_to_java_dtype.count(scalarType) == 0) {
       std::stringstream ss;
-      ss << "executorch::aten::Tensor scalar [java] type: " << jdtype
-         << " is not supported on java side";
+      ss << "executorch::aten::Tensor scalar type "
+         << static_cast<int>(scalarType) << " is not supported on java side";
       jni_helper::throwExecutorchException(
           static_cast<uint32_t>(Error::InvalidArgument), ss.str().c_str());
+      return nullptr;
     }
+    int jdtype = scalar_type_to_java_dtype.at(scalarType);
 
     const auto& tensor_shape = tensor.sizes();
     std::vector<jlong> tensor_shape_vec;
@@ -131,6 +132,7 @@ class TensorHybrid : public facebook::jni::HybridClass<TensorHybrid> {
       ss << "Unknown Tensor jdtype: [" << jdtype << "]";
       jni_helper::throwExecutorchException(
           static_cast<uint32_t>(Error::InvalidArgument), ss.str().c_str());
+      return nullptr;
     }
     ScalarType scalar_type = java_dtype_to_scalar_type.at(jdtype);
     const jlong dataCapacity = jni->GetDirectBufferCapacity(jbuffer.get());
@@ -139,6 +141,7 @@ class TensorHybrid : public facebook::jni::HybridClass<TensorHybrid> {
       ss << "Tensor buffer is not direct or has invalid capacity";
       jni_helper::throwExecutorchException(
           static_cast<uint32_t>(Error::InvalidArgument), ss.str().c_str());
+      return nullptr;
     }
     const size_t elementSize = executorch::runtime::elementSize(scalar_type);
     const jlong expectedElements = static_cast<jlong>(numel);
@@ -153,6 +156,7 @@ class TensorHybrid : public facebook::jni::HybridClass<TensorHybrid> {
          << " (element size bytes: " << elementSize << ")";
       jni_helper::throwExecutorchException(
           static_cast<uint32_t>(Error::InvalidArgument), ss.str().c_str());
+      return nullptr;
     }
     return from_blob(
         jni->GetDirectBufferAddress(jbuffer.get()), shape_vec, scalar_type);
